@@ -222,16 +222,20 @@ class Dataset_Custom(Dataset):
         '''
         df_raw.columns: ['date', ...(other features), target feature]
         '''
+        df_raw.columns = ['date','min_lat', 'max_lat', 'min_lon', 'max_lon', 'avg_brightness', 'avg_confidence']
         # cols = list(df_raw.columns); 
+        print(f"Before: {df_raw[:2]}")
         if self.cols:
             cols=self.cols.copy()
             cols.remove(self.target)
         else:
-            cols = list(df_raw.columns); cols.remove(self.target); cols.remove('date')
-        df_raw = df_raw[['date']+cols+[self.target]]
+            cols = list(df_raw.columns); cols.remove('date')
+            print("in here?")
+        df_raw = df_raw[['date']+cols]
 
-        num_train = int(len(df_raw)*0.7)
-        num_test = int(len(df_raw)*0.2)
+        print(f"somewhat after: {df_raw[:2]}")
+        num_train = int(len(df_raw)*0.8)
+        num_test = int(len(df_raw)*0.1)
         num_vali = len(df_raw) - num_train - num_test
         border1s = [0, num_train-self.seq_len, len(df_raw)-num_test-self.seq_len]
         border2s = [num_train, num_train+num_vali, len(df_raw)]
@@ -244,23 +248,29 @@ class Dataset_Custom(Dataset):
         elif self.features=='S':
             df_data = df_raw[[self.target]]
 
-        if self.scale:
-            train_data = df_data[border1s[0]:border2s[0]]
-            self.scaler.fit(train_data.values)
-            data = self.scaler.transform(df_data.values)
-        else:
-            data = df_data.values
-            
+        print(f"before scale: {df_data[:2]}")
+        # if self.scale:
+        #     train_data = df_data[border1s[0]:border2s[0]]
+        #     self.scaler.fit(train_data.values)
+        #     data = self.scaler.transform(df_data.values)
+        #     print("in scale")
+        # else:
+        data = df_data.values
+        print(f"after scale: {df_data[:2]}")
+        print(f"data now: {data[:2]}")
         df_stamp = df_raw[['date']][border1:border2]
         df_stamp['date'] = pd.to_datetime(df_stamp.date)
         data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
 
+        # print(f"before scale: {df_data[:2]}")
         self.data_x = data[border1:border2]
         if self.inverse:
             self.data_y = df_data.values[border1:border2]
         else:
             self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
+
+        print(f"data head: {self.data_x[:5]}")
     
     def __getitem__(self, index):
         s_begin = index
@@ -319,12 +329,13 @@ class Dataset_Pred(Dataset):
         '''
         df_raw.columns: ['date', ...(other features), target feature]
         '''
+        df_raw.columns = ['date','min_lat', 'max_lat', 'min_lon', 'max_lon', 'avg_brightness', 'avg_confidence']
         if self.cols:
             cols=self.cols.copy()
             cols.remove(self.target)
         else:
-            cols = list(df_raw.columns); cols.remove(self.target); cols.remove('date')
-        df_raw = df_raw[['date']+cols+[self.target]]
+            cols = list(df_raw.columns); cols.remove('date')
+        df_raw = df_raw[['date']+cols]
         
         border1 = len(df_raw)-self.seq_len
         border2 = len(df_raw)
