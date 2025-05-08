@@ -123,6 +123,7 @@ class Exp_Informer(Exp_Basic):
         return total_loss
 
     def train(self, setting):
+        #  we are getting each train dataset and the data loader from pytorch for the model
         train_data, train_loader = self._get_data(flag = 'train')
         vali_data, vali_loader = self._get_data(flag = 'val')
         test_data, test_loader = self._get_data(flag = 'test')
@@ -148,12 +149,15 @@ class Exp_Informer(Exp_Basic):
             
             self.model.train()
             epoch_time = time.time()
+            # print(train_loader)
             for i, (batch_x,batch_y,batch_x_mark,batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
                 
                 model_optim.zero_grad()
                 pred, true = self._process_one_batch(
                     train_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
+                print(f"Shape of pred: {pred.shape}")
+                print(f"Shape of true: {true.shape}")
                 loss = criterion(pred, true)
                 train_loss.append(loss.item())
                 
@@ -263,15 +267,22 @@ class Exp_Informer(Exp_Basic):
         batch_x_mark = batch_x_mark.float().to(self.device)
         batch_y_mark = batch_y_mark.float().to(self.device)
 
+        # batch_y = batch_y.squeeze(-2).squeeze(-1)
+        # print(f"shapeeee {batch_y.shape}")
         # decoder input
         if self.args.padding==0:
-            dec_inp = torch.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]]).float()
+            print("here?")
+            dec_inp = torch.zeros([batch_y.shape[0], self.args.pred_len,batch_y.shape[-2], batch_y.shape[-1]]).float()
         elif self.args.padding==1:
-            dec_inp = torch.ones([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]]).float()
-        dec_inp = torch.cat([batch_y[:,:self.args.label_len,:], dec_inp], dim=1).float().to(self.device)
+            print("or here?")
+            dec_inp = torch.ones([batch_y.shape[0], self.args.pred_len, batch_y.shape[-2],batch_y.shape[-1]]).float()
+
+        print("batch shape",batch_y.shape)
+
+        dec_inp = torch.cat([batch_y[:,:self.args.label_len,:,:], dec_inp], dim=1).float().to(self.device)
         # encoder - decoder
         if self.args.use_amp:
-            with torch.cuda.amp.autocast():
+            with torch.cuda.amp.autocast("cuda"):
                 if self.args.output_attention:
                     outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                 else:
